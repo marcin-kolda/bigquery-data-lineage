@@ -1,0 +1,10 @@
+*.pyc
+
+# IDE
+*.iml
+
+logs
+*.csv
+csv
+*.sh
+*.html
