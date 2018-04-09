@@ -2,6 +2,8 @@ import logging
 import sys
 
 from logs_reader import LogDataReader
+from logs_transformer import LogDataTransformer
+from visualisation import template_renderer
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-5s %(filename)-12s %(message)s',
@@ -21,3 +23,5 @@ except ImportError:
 if __name__ == '__main__':
     for project_id in args.project_ids.split(","):
         LogDataReader().download_log_entries(project_id, args.number_of_days)
+    nodes, edges = LogDataTransformer().create_graph()
+    template_renderer.render(nodes, edges, 'graph.html')
