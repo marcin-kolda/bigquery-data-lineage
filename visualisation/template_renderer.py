@@ -1,5 +1,6 @@
 import colorsys
 import json
+import logging
 
 from jinja2 import Environment, PackageLoader
 import graph
@@ -29,6 +30,7 @@ def get_description(node):
 
 
 def render(nodes, edges, output_name):
+    logging.info("Processing {} nodes and {} edges".format(len(nodes), len(edges)))
     color_map = roles_to_color_map(edges=edges)
     formatted_nodes, formatted_edges = format_graph(nodes, edges, color_map)
     nodes_string = ",\n".join(formatted_nodes).encode('utf-8')

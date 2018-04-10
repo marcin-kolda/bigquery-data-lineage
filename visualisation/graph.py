@@ -67,3 +67,12 @@ class Edge:
         self.label = label
         self.title = title if title else role
         self.role = role
+
+    def __str__(self):
+        return 'from {} to {}'.format(self.node_from, self.node_to)
+
+    def __hash__(self):
+        return hash(self.node_from) + hash(self.node_to)
+
+    def __eq__(self, other):
+        return self.node_from == other.node_from and self.node_to == other.node_to

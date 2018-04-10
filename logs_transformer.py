@@ -3,39 +3,38 @@ import logging
 import os
 from glob import glob
 
-from visualisation.graph import Node, Edge
+from log_entry import LogEntry
+from visualisation.graph import Edge
 
 
 class LogDataTransformer:
+
+    def __init__(self, ignored_projects_ids):
+        self.ignored_projects_ids = ignored_projects_ids
 
     def create_graph(self):
         edges = []
         nodes = []
         for entry in self.__list_entries():
             try:
-                if entry.has_data_lineage():
-                    nodes.extend(entry.get_nodes())
+                if entry.has_data_lineage() and entry.get_destination_project() not in self.ignored_projects_ids:
+                    target_node = entry.get_target_node()
+                    if not target_node:
+                        continue
+                    nodes.append(target_node)
+                    source_nodes = entry.get_source_nodes()
+                    if not source_nodes:
+                        continue
+                    nodes.extend(source_nodes)
+                    for source_node in source_nodes:
+                        edges.append(Edge(source_node, target_node, role='Upload1'))
             except KeyError:
                 logging.warn("Wrong entry: {}".format(entry))
                 raise
-        return list(set(nodes)), edges
+        return list(set(nodes)), list(set(edges))
 
-    def gen(self):
-        upload1 = Node("cloud-upload", "id:1", "Title1",
-                       properties={'prop1': 'value1'})
-        upload2 = Node("cloud-upload", "id:2",
-                       "Title2")
-        upload3 = Node("cloud-upload", "id:2",
-                       "Title3")
-        cloud = Node("cloud", "id:5",
-                     "Title2")
-        edges = []
-        edges.append(Edge(upload1, cloud, role='Upload1'))
-        edges.append(Edge(upload2, cloud, role='Upload2'))
-        nodes = [upload1, upload2, upload3, cloud]
-        return nodes, edges
-
-    def __list_entries(self):
+    @staticmethod
+    def __list_entries():
         json_files = [y for x in os.walk("logs") for y in glob(os.path.join(x[0], '*.json'))]
         for json_file in json_files:
             logging.info("Parsing log entries from {}".format(json_file))
@@ -43,36 +42,3 @@ class LogDataTransformer:
                 json_dict = json.load(data_file)
                 for entry in json_dict['entries']:
                     yield LogEntry(entry)
-
-
-class LogEntry(object):
-
-    def __init__(self, json_dict):
-        self.json_dict = json_dict
-
-    def has_data_lineage(self):
-        try:
-            stats = self.json_dict['protoPayload']['serviceData']['jobCompletedEvent']['job']['jobStatistics']
-        except KeyError:
-            return False
-        return True
-
-    def get_nodes(self):
-        try:
-            destination_table = \
-                self.json_dict['protoPayload']['serviceData']['jobCompletedEvent']['job']['jobConfiguration']['query'][
-                    'destinationTable']
-
-            if destination_table['datasetId'].startswith("_") and destination_table['tableId'].startswith("anon"):
-                return []
-
-            return [Node("cloud-upload", self.__create_table_id(destination_table),
-                         self.__create_table_id(destination_table))]
-        except KeyError:
-            return []
-
-    def __create_table_id(self, table):
-        return "{}.{}.{}".format(table['projectId'], table['datasetId'], table['tableId'].split('$')[0])
-
-    def __str__(self):
-        return json.dumps(self.json_dict, indent=4, sort_keys=True)
